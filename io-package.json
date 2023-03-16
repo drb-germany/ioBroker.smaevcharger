@@ -1,0 +1,104 @@
+{
+	"common": {
+		"name": "smaevcharger",
+		"version": "0.0.1",
+		"news": {
+			"0.0.1": {
+				"en": "initial release",
+				"de": "Erstveröffentlichung",
+				"ru": "Начальная версия",
+				"pt": "lançamento inicial",
+				"nl": "Eerste uitgave",
+				"fr": "Première version",
+				"it": "Versione iniziale",
+				"es": "Versión inicial",
+				"pl": "Pierwsze wydanie",
+				"zh-cn": "首次出版"
+			}
+		},
+		"title": "SMA EV Charger",
+		"titleLang": {
+			"en": "SMA EV Charger",
+			"de": "SMA EV-Ladegerät",
+			"ru": "Зарядное устройство SMA для электромобилей",
+			"pt": "Carregador SMA EV",
+			"nl": "SMA EV-oplader",
+			"fr": "Chargeur SMA EV",
+			"it": "Caricabatterie per veicoli elettrici SMA",
+			"es": "Cargador SMA para vehículos eléctricos",
+			"pl": "Ładowarka SMA EV",
+			"zh-cn": "SMA电动车充电器"
+		},
+		"desc": {
+			"en": "Controller for the SMA EV Charger 7.4 / 22",
+			"de": "Controller für den SMA EV Charger 7.4 / 22",
+			"ru": "Контроллер для зарядного устройства SMA EV 7.4/22",
+			"pt": "Controlador para o SMA EV Charger 7.4 / 22",
+			"nl": "Controller voor de SMA EV Charger 7.4 / 22",
+			"fr": "Contrôleur pour le SMA EV Charger 7.4 / 22",
+			"it": "Controller per SMA EV Charger 7.4 / 22",
+			"es": "Controlador para el SMA EV Charger 7.4 / 22",
+			"pl": "Kontroler do ładowarki SMA EV Charger 7.4 / 22",
+			"zh-cn": "SMA EV 充电器控制器 7.4 / 22"
+		},
+		"authors": ["Martin <brodeck@gmail.com>"],
+		"keywords": ["sma", "ev", "charger", "7.4"],
+		"license": "MIT",
+		"platform": "Javascript/Node.js",
+		"main": "main.js",
+		"icon": "smaevcharger.png",
+		"enabled": true,
+		"extIcon": "https://raw.githubusercontent.com/drb-germany/ioBroker.smaevcharger/main/admin/smaevcharger.png",
+		"readme": "https://github.com/drb-germany/ioBroker.smaevcharger/blob/main/README.md",
+		"loglevel": "info",
+		"mode": "daemon",
+		"type": "vehicle",
+		"compact": true,
+		"connectionType": "local",
+		"dataSource": "poll",
+		"adminUI": {
+			"config": "json"
+		},
+		"dependencies": [
+			{
+				"js-controller": ">=3.3.22"
+			}
+		],
+		"globalDependencies": [
+			{
+				"admin": ">=5.1.13"
+			}
+		]
+	},
+	"native": {
+		"chargerip": "192.168.X.Y",
+		"username": "",
+		"password": "",
+		"updateRateRead": 30,
+		"updateRateWrite": 300
+	},
+	"objects": [],
+	"instanceObjects": [
+		{
+			"_id": "info",
+			"type": "channel",
+			"common": {
+				"name": "Information"
+			},
+			"native": {}
+		},
+		{
+			"_id": "info.connection",
+			"type": "state",
+			"common": {
+				"role": "indicator.connected",
+				"name": "Device or service connected",
+				"type": "boolean",
+				"read": true,
+				"write": false,
+				"def": false
+			},
+			"native": {}
+		}
+	]
+}

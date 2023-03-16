@@ -1,0 +1,40 @@
+{
+	"i18n": true,
+	"type": "panel",
+	"items": {
+		"chargerip": {
+			"type": "text",
+			"label": "IP address of charger",
+			"md": 4,
+			"newLine": true
+		},
+		"username": {
+			"type": "text",
+			"label": "Username (admin rights required!)",
+			"md": 4,
+			"newLine": true
+		},
+		"password": {
+			"type": "password",
+			"label": "Password",
+			"md": 4,
+			"newLine": true
+		},
+		"updateRateRead": {
+			"type": "number",
+			"min": 10,
+			"max": 600,
+			"label": "Update rate read (seconds)",
+			"md": 4,
+			"newLine": true
+		},
+		"updateRateWrite": {
+			"type": "number",
+			"min": 60,
+			"max": 600,
+			"label": "Update rate write (seconds)",
+			"md": 4,
+			"newLine": true
+		}
+	}
+}
