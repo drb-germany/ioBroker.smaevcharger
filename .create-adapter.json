@@ -30,6 +30,6 @@
 	"gitCommit": "no",
 	"defaultBranch": "main",
 	"license": "MIT License",
-	"dependabot": "yes",
+	"dependabot": "no",
 	"creatorVersion": "2.3.0"
 }
