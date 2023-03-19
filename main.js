@@ -8,9 +8,18 @@
 // you need to create an adapter
 const utils = require('@iobroker/adapter-core');
 const axios = require('axios').default;
+const https = require('https');
+
+const instance = axios.create({
+	httpsAgent: new https.Agent({
+		rejectUnauthorized: false,
+	}),
+});
 
 // Load your modules here, e.g.:
 // const fs = require("fs");
+
+const connectionToken = '';
 
 class Smaevcharger extends utils.Adapter {
 	/**
@@ -28,6 +37,57 @@ class Smaevcharger extends utils.Adapter {
 		this.on('unload', this.onUnload.bind(this));
 	}
 
+	async checkConnection() {
+		if (!connectionToken) {
+			this.log.info(`Hello world`);
+
+			// instance
+			// 	.post(
+			// 		`https://${this.config.chargerip}/api/v1/token`,
+			// 		{
+			// 			grant_type: 'password',
+			// 			username: 'ETM-GmbH',
+			// 			password: 'Sol-9262-1',
+			// 		},
+			// 		{
+			// 			headers: {
+			// 				'Content-Type': 'multipart/form-data',
+			// 			},
+			// 		},
+			// 	)
+			// 	.then((response) => {
+			// 		this.log.info(`Response: ${response}`);
+			// 		if (response.status === 200) {
+			// 			this.log.info(`Token: ${response.data.access_token}`);
+			// 		}
+			// 	});
+
+			instance
+				.post(
+					`https://${this.config.chargerip}/api/v1/token`,
+					{
+						grant_type: 'password',
+						username: this.config.username,
+						password: this.config.password,
+					},
+					{
+						headers: {
+							accept: 'application/json, text/plain, */*',
+							'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
+						},
+					},
+				)
+				.then((response) => {
+					this.log.info(`Response: ${response}`);
+					if (response.status === 200) {
+						this.log.info(`Token: ${response.data.access_token}`);
+					}
+				});
+
+			this.setState('info.connection', true, true);
+		}
+	}
+
 	/**
 	 * Is called when databases are connected and adapter received configuration.
 	 */
@@ -36,56 +96,38 @@ class Smaevcharger extends utils.Adapter {
 
 		// Reset the connection indicator during startup
 		this.setState('info.connection', false, true);
+		this.log.info(`Connecting to ${this.config.chargerip}`);
 
-		// The adapters config (in the instance object everything under the attribute "native") is accessible via
-		// this.config:
-		this.log.info('config option1: ' + this.config.option1);
-		this.log.info('config option2: ' + this.config.option2);
+		//await this.checkConnection();
 
-		/*
-		For every state in the system there has to be also an object of type state
-		Here a simple template for a boolean variable named "testVariable"
-		Because every adapter instance uses its own unique namespace variable names can't collide with other adapters variables
-		*/
-		await this.setObjectNotExistsAsync('testVariable', {
-			type: 'state',
-			common: {
-				name: 'testVariable',
-				type: 'boolean',
-				role: 'indicator',
-				read: true,
-				write: true,
-			},
-			native: {},
-		});
+		// await this.setObjectNotExistsAsync('info.carConnected', {
+		// 	type: 'state',
+		// 	common: {
+		// 		name: 'info.carConnected',
+		// 		type: 'boolean',
+		// 		role: 'indicator',
+		// 		read: true,
+		// 		write: false,
+		// 	},
+		// 	native: {},
+		// });
 
-		// In order to get state updates, you need to subscribe to them. The following line adds a subscription for our variable we have created above.
-		this.subscribeStates('testVariable');
-		// You can also add a subscription for multiple states. The following line watches all states starting with "lights."
-		// this.subscribeStates('lights.*');
-		// Or, if you really must, you can also watch all states. Don't do this if you don't need to. Otherwise this will cause a lot of unnecessary load on the system:
-		// this.subscribeStates('*');
+		// await this.setObjectNotExistsAsync('info.carCharging', {
+		// 	type: 'state',
+		// 	common: {
+		// 		name: 'info.carCharging',
+		// 		type: 'boolean',
+		// 		role: 'indicator',
+		// 		read: true,
+		// 		write: false,
+		// 	},
+		// 	native: {},
+		// });
 
-		/*
-			setState examples
-			you will notice that each setState will cause the stateChange event to fire (because of above subscribeStates cmd)
-		*/
-		// the variable testVariable is set to true as command (ack=false)
-		await this.setStateAsync('testVariable', true);
+		this.log.info(`Setting car states`);
 
-		// same thing, but the value is flagged "ack"
-		// ack should be always set to true if the value is received from or acknowledged from the target system
-		await this.setStateAsync('testVariable', { val: true, ack: true });
-
-		// same thing, but the state is deleted after 30s (getState will return null afterwards)
-		await this.setStateAsync('testVariable', { val: true, ack: true, expire: 30 });
-
-		// examples for the checkPassword/checkGroup functions
-		let result = await this.checkPasswordAsync('admin', 'iobroker');
-		this.log.info('check user admin pw iobroker: ' + result);
-
-		result = await this.checkGroupAsync('admin', 'admin');
-		this.log.info('check group user admin group admin: ' + result);
+		this.setState('info.carConnected', false, true);
+		this.setState('info.carCharging', false, true);
 	}
 
 	/**
