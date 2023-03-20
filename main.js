@@ -65,6 +65,24 @@ class Smaevcharger extends utils.Adapter {
 				if (response.status === 200) {
 					console.log(response.data);
 					this.log.info(`Data: ${response.data}`);
+					// parse data
+					response.data.forEach((item) => {
+						if (item.channelId === 'Measurement.Operation.EVeh.Health') {
+							//if (item.values[0].value) this.setState('charger.carConnected', false, true);
+							//this.setState('charger.carCharging', false, true);
+							//this.setState('charger.currentCharge', item.values[0].value, true);
+						}
+						if (item.channelId === 'Measurement.Operation.EVeh.ChaStt') {
+							if (item.values[0].value === 5169) this.setState('charger.carConnected', true, true);
+							else this.setState('charger.carConnected', false, true);
+						}
+						if (item.channelId === 'Measurement.ChaSess.WhIn') {
+							this.setState('charger.currentEnergy', item.values[0].value, true);
+						}
+						if (item.channelId === 'Measurement.Metering.GridMs.TotWIn') {
+							this.setState('charger.currentPower', item.values[0].value, true);
+						}
+					});
 				} else {
 					this.log.error(`Error, could not connect, response code ${response.status}`);
 				}
@@ -159,6 +177,28 @@ class Smaevcharger extends utils.Adapter {
 				name: 'Car is charging',
 				type: 'boolean',
 				role: 'indicator',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync('charger.currentEnergy', {
+			type: 'state',
+			common: {
+				name: 'Total energy for this process',
+				type: 'number',
+				role: 'value',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync('charger.currentPower', {
+			type: 'state',
+			common: {
+				name: 'Current power',
+				type: 'number',
+				role: 'value',
 				read: true,
 				write: false,
 			},
