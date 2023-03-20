@@ -19,8 +19,6 @@ const instance = axios.create({
 // Load your modules here, e.g.:
 // const fs = require("fs");
 
-const connectionToken = '';
-
 class Smaevcharger extends utils.Adapter {
 	/**
 	 * @param {Partial<utils.AdapterOptions>} [options={}]
@@ -31,38 +29,74 @@ class Smaevcharger extends utils.Adapter {
 			name: 'smaevcharger',
 		});
 		this.on('ready', this.onReady.bind(this));
-		this.on('stateChange', this.onStateChange.bind(this));
+		// this.on('stateChange', this.onStateChange.bind(this));
 		// this.on('objectChange', this.onObjectChange.bind(this));
 		// this.on('message', this.onMessage.bind(this));
 		this.on('unload', this.onUnload.bind(this));
+
+		this.updateRead = null;
+		this.updateWrite = null;
+		this.connectionToken = '';
 	}
 
-	async checkConnection() {
-		if (!connectionToken) {
-			this.log.info(`Hello world`);
+	async intervalRead() {
+		if (this.updateRead) {
+			this.clearTimeout(this.updateRead);
+		}
 
-			// instance
-			// 	.post(
-			// 		`https://${this.config.chargerip}/api/v1/token`,
-			// 		{
-			// 			grant_type: 'password',
-			// 			username: 'ETM-GmbH',
-			// 			password: 'Sol-9262-1',
-			// 		},
-			// 		{
-			// 			headers: {
-			// 				'Content-Type': 'multipart/form-data',
-			// 			},
-			// 		},
-			// 	)
-			// 	.then((response) => {
-			// 		this.log.info(`Response: ${response}`);
-			// 		if (response.status === 200) {
-			// 			this.log.info(`Token: ${response.data.access_token}`);
-			// 		}
-			// 	});
+		// do work
+		this.log.info(`Simulating read`);
 
-			instance
+		// make sure we have a token
+		await this.getToken();
+
+		this.log.info(`Token: ${this.connectionToken}`);
+
+		instance
+			.post(`https://${this.config.chargerip}/api/v1/measurements/live/`, [{ componentId: 'IGULD:SELF' }], {
+				headers: {
+					accept: 'application/json, text/plain, */*',
+					'content-type': 'application/json',
+					Authorization: `Bearer ${this.connectionToken}`,
+				},
+			})
+			.then((response) => {
+				this.log.debug(`Response code ${response.status}`);
+				if (response.status === 200) {
+					console.log(response.data);
+					this.log.info(`Data: ${response.data}`);
+				} else {
+					this.log.error(`Error, could not connect, response code ${response.status}`);
+				}
+			})
+			.catch((error) => {
+				this.log.error(`Could not connect to charger, error: ${error}`);
+			});
+
+		this.updateRead = this.setTimeout(async () => {
+			this.updateRead = null;
+			await this.intervalRead();
+		}, this.config.updateRateRead * 1000);
+	}
+
+	async intervalWrite() {
+		if (this.updateWrite) {
+			this.clearTimeout(this.updateWrite);
+		}
+
+		// do work
+		this.log.info(`Simulating write`);
+
+		this.updateWrite = this.setTimeout(async () => {
+			this.updateWrite = null;
+			await this.intervalWrite();
+		}, this.config.updateRateWrite * 1000);
+	}
+
+	async getToken() {
+		// if we do not have a connectionToken, we have to get one
+		if (!this.connectionToken) {
+			await instance
 				.post(
 					`https://${this.config.chargerip}/api/v1/token`,
 					{
@@ -78,13 +112,19 @@ class Smaevcharger extends utils.Adapter {
 					},
 				)
 				.then((response) => {
-					this.log.info(`Response: ${response}`);
+					this.log.debug(`Response code ${response.status}`);
 					if (response.status === 200) {
-						this.log.info(`Token: ${response.data.access_token}`);
+						this.setState('info.connection', true, true);
+						this.connectionToken = response.data.access_token;
+						this.log.debug(`Token received`);
+					} else {
+						this.setState('info.connection', false, true);
+						this.log.error(`Error, could not connect, response code ${response.status}`);
 					}
+				})
+				.catch((error) => {
+					this.log.error(`Could not connect to charger, error: ${error}`);
 				});
-
-			this.setState('info.connection', true, true);
 		}
 	}
 
@@ -98,36 +138,37 @@ class Smaevcharger extends utils.Adapter {
 		this.setState('info.connection', false, true);
 		this.log.info(`Connecting to ${this.config.chargerip}`);
 
-		//await this.checkConnection();
+		// get first token
+		// await this.getToken();
 
-		// await this.setObjectNotExistsAsync('info.carConnected', {
-		// 	type: 'state',
-		// 	common: {
-		// 		name: 'info.carConnected',
-		// 		type: 'boolean',
-		// 		role: 'indicator',
-		// 		read: true,
-		// 		write: false,
-		// 	},
-		// 	native: {},
-		// });
+		// initialize variables
+		await this.setObjectNotExistsAsync('charger.carConnected', {
+			type: 'state',
+			common: {
+				name: 'Car is connected',
+				type: 'boolean',
+				role: 'indicator',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync('charger.carCharging', {
+			type: 'state',
+			common: {
+				name: 'Car is charging',
+				type: 'boolean',
+				role: 'indicator',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
 
-		// await this.setObjectNotExistsAsync('info.carCharging', {
-		// 	type: 'state',
-		// 	common: {
-		// 		name: 'info.carCharging',
-		// 		type: 'boolean',
-		// 		role: 'indicator',
-		// 		read: true,
-		// 		write: false,
-		// 	},
-		// 	native: {},
-		// });
-
-		this.log.info(`Setting car states`);
-
-		this.setState('info.carConnected', false, true);
-		this.setState('info.carCharging', false, true);
+		//this.setState('charger.carConnected', false, true);
+		//this.setState('charger.carCharging', false, true);
+		this.intervalRead();
+		this.intervalWrite();
 	}
 
 	/**
@@ -136,11 +177,12 @@ class Smaevcharger extends utils.Adapter {
 	 */
 	onUnload(callback) {
 		try {
-			// Here you must clear all timeouts or intervals that may still be active
-			// clearTimeout(timeout1);
-			// clearTimeout(timeout2);
-			// ...
-			// clearInterval(interval1);
+			if (this.updateRead) {
+				this.clearTimeout(this.updateRead);
+			}
+			if (this.updateWrite) {
+				this.clearTimeout(this.updateWrite);
+			}
 
 			callback();
 		} catch (e) {
@@ -170,15 +212,15 @@ class Smaevcharger extends utils.Adapter {
 	 * @param {string} id
 	 * @param {ioBroker.State | null | undefined} state
 	 */
-	onStateChange(id, state) {
-		if (state) {
-			// The state was changed
-			this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
-		} else {
-			// The state was deleted
-			this.log.info(`state ${id} deleted`);
-		}
-	}
+	// onStateChange(id, state) {
+	// 	if (state) {
+	// 		// The state was changed
+	// 		this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
+	// 	} else {
+	// 		// The state was deleted
+	// 		this.log.info(`state ${id} deleted`);
+	// 	}
+	// }
 
 	// If you need to accept messages in your adapter, uncomment the following block and the corresponding line in the constructor.
 	// /**
