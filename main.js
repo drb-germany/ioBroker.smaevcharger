@@ -101,6 +101,9 @@ class Smaevcharger extends utils.Adapter {
 						if (item.channelId === 'Measurement.ChaSess.WhIn') {
 							this.setState('charger.currentEnergy', item.values[0].value, true);
 						}
+						if (item.channelId === 'Measurement.Metering.GridMs.TotWhIn') {
+							this.setState('charger.totalEnergy', item.values[0].value, true);
+						}
 						if (item.channelId === 'Measurement.Metering.GridMs.TotWIn') {
 							this.setState('charger.currentPower', item.values[0].value, true);
 						}
@@ -231,6 +234,18 @@ class Smaevcharger extends utils.Adapter {
 			type: 'state',
 			common: {
 				name: 'Total energy for this process',
+				unit: 'Wh',
+				type: 'number',
+				role: 'value',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync('charger.totalEnergy', {
+			type: 'state',
+			common: {
+				name: 'Total energy on charger',
 				unit: 'Wh',
 				type: 'number',
 				role: 'value',
