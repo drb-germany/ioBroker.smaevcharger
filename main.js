@@ -141,6 +141,58 @@ class Smaevcharger extends utils.Adapter {
 		// do work
 		this.log.debug(`Calling write`);
 
+		// make sure we have a token
+		await this.getToken();
+
+		const maximumCurrent = this.getStateAsync('charger.maximumCurrent');
+
+		await instance
+			.post(
+				`https://${this.config.chargerip}/api/v1/parameters/search/`,
+				{ queryItems: [{ componentId: 'IGULD:SELF' }] },
+				{
+					headers: {
+						accept: 'application/json, text/plain, */*',
+						'content-type': 'application/json',
+						Authorization: `Bearer ${this.connectionToken}`,
+					},
+				},
+			)
+			.then((response) => {
+				// parse response
+				console.log(response);
+			})
+			.catch((error) => {
+				this.log.error(`Could not get parameters from charger, error: ${error}`);
+				// we reset the connectionToken if we were not able to get data
+				this.connectionToken = '';
+			});
+
+		await instance
+			.put(
+				`https://${this.config.chargerip}/api/v1/parameters/IGULD:SELF`,
+				{
+					values: [
+						{
+							channelId: 'Parameter.Inverter.AcALim',
+							value: `${maximumCurrent}}`,
+						},
+					],
+				},
+				{
+					headers: {
+						accept: 'application/json, text/plain, */*',
+						'content-type': 'application/json',
+						Authorization: `Bearer ${this.connectionToken}`,
+					},
+				},
+			)
+			.catch((error) => {
+				this.log.error(`Could not write parameters to charger, error: ${error}`);
+				// we reset the connectionToken if we were not able to get data
+				this.connectionToken = '';
+			});
+
 		this.updateWrite = this.setTimeout(async () => {
 			this.updateWrite = null;
 			await this.intervalWrite();
@@ -333,6 +385,30 @@ class Smaevcharger extends utils.Adapter {
 				role: 'value',
 				read: true,
 				write: false,
+			},
+			native: {},
+		});
+
+		await this.setObjectNotExistsAsync('charger.activateStation', {
+			type: 'state',
+			common: {
+				name: 'Activate station',
+				type: 'boolean',
+				role: 'switch',
+				read: true,
+				write: true,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync('charger.maximumCurrent', {
+			type: 'state',
+			common: {
+				name: 'Maximum current',
+				unit: 'A',
+				type: 'number',
+				role: 'value',
+				read: true,
+				write: true,
 			},
 			native: {},
 		});
