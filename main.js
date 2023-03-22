@@ -160,7 +160,20 @@ class Smaevcharger extends utils.Adapter {
 			)
 			.then((response) => {
 				// parse response
-				console.log(response);
+				this.log.debug(`Response code ${response.status}`);
+				if (response.status === 200) {
+					// parse data
+					response.data[0].values.forEach((item) => {
+						if (item.channelId === 'Parameter.Inverter.AcALim') {
+							// record this for understanding
+							console.log(`Item: ${item}`);
+							console.log(`Item value: ${item.value}`);
+							this.setState('charger.maximumCurrent', Number.parseFloat(item.value), true);
+						}
+					});
+				} else {
+					this.log.error(`Error, could not connect, response code ${response.status}`);
+				}
 			})
 			.catch((error) => {
 				this.log.error(`Could not get parameters from charger, error: ${error}`);
