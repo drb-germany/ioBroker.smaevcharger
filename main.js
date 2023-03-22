@@ -51,8 +51,6 @@ class Smaevcharger extends utils.Adapter {
 		// make sure we have a token
 		await this.getToken();
 
-		this.log.info(`Token: ${this.connectionToken}`);
-
 		instance
 			.post(`https://${this.config.chargerip}/api/v1/measurements/live/`, [{ componentId: 'IGULD:SELF' }], {
 				headers: {
@@ -85,10 +83,20 @@ class Smaevcharger extends utils.Adapter {
 							// record this for understanding
 							this.setState('rawdata.EVehChaStt', item.values[0].value, true);
 
-							// value of 5169 means that the car is connected
-							if (item.values[0].value === 5169) this.setState('charger.carConnected', true, true);
+							// 5169: connected, not charging
+							// 200113: connected, charging
 							// 200111: not connected
-							else this.setState('charger.carConnected', false, true);
+
+							if (item.values[0].value === 5169) {
+								this.setState('charger.carConnected', true, true);
+								this.setState('charger.carCharging', false, true);
+							} else if (item.values[0].value === 200113) {
+								this.setState('charger.carConnected', true, true);
+								this.setState('charger.carCharging', true, true);
+							} else if (item.values[0].value === 200111) {
+								this.setState('charger.carConnected', false, true);
+								this.setState('charger.carCharging', false, true);
+							}
 						}
 						if (item.channelId === 'Measurement.ChaSess.WhIn') {
 							this.setState('charger.currentEnergy', item.values[0].value, true);
@@ -97,13 +105,13 @@ class Smaevcharger extends utils.Adapter {
 							this.setState('charger.currentPower', item.values[0].value, true);
 						}
 						if (item.channelId === 'Measurement.GridMs.A.phsA') {
-							this.setState('charger.currentPhaseA', item.values[0].value, true);
+							this.setState('charger.currentPhaseA', -item.values[0].value, true);
 						}
 						if (item.channelId === 'Measurement.GridMs.A.phsB') {
-							this.setState('charger.currentPhaseB', item.values[0].value, true);
+							this.setState('charger.currentPhaseB', -item.values[0].value, true);
 						}
 						if (item.channelId === 'Measurement.GridMs.A.phsC') {
-							this.setState('charger.currentPhaseC', item.values[0].value, true);
+							this.setState('charger.currentPhaseC', -item.values[0].value, true);
 						}
 					});
 				} else {
@@ -222,7 +230,8 @@ class Smaevcharger extends utils.Adapter {
 		await this.setObjectNotExistsAsync('charger.currentEnergy', {
 			type: 'state',
 			common: {
-				name: 'Total energy for this process (Wh)',
+				name: 'Total energy for this process',
+				unit: 'Wh',
 				type: 'number',
 				role: 'value',
 				read: true,
@@ -233,8 +242,8 @@ class Smaevcharger extends utils.Adapter {
 		await this.setObjectNotExistsAsync('charger.currentPower', {
 			type: 'state',
 			common: {
-				name: 'Current power (W)',
-				unit: 'A',
+				name: 'Current power',
+				unit: 'W',
 				type: 'number',
 				role: 'value',
 				read: true,
@@ -245,7 +254,8 @@ class Smaevcharger extends utils.Adapter {
 		await this.setObjectNotExistsAsync('charger.currentPhaseA', {
 			type: 'state',
 			common: {
-				name: 'Current on phase A (A)',
+				name: 'Current on phase A',
+				unit: 'A',
 				type: 'number',
 				role: 'value',
 				read: true,
@@ -256,7 +266,8 @@ class Smaevcharger extends utils.Adapter {
 		await this.setObjectNotExistsAsync('charger.currentPhaseB', {
 			type: 'state',
 			common: {
-				name: 'Current on phase B (A)',
+				name: 'Current on phase B',
+				unit: 'A',
 				type: 'number',
 				role: 'value',
 				read: true,
@@ -267,7 +278,8 @@ class Smaevcharger extends utils.Adapter {
 		await this.setObjectNotExistsAsync('charger.currentPhaseC', {
 			type: 'state',
 			common: {
-				name: 'Current on phase C (A)',
+				name: 'Current on phase C',
+				unit: 'A',
 				type: 'number',
 				role: 'value',
 				read: true,
