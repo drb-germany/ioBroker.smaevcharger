@@ -188,14 +188,14 @@ class Smaevcharger extends utils.Adapter {
 					values: [
 						{
 							channelId: 'Parameter.Inverter.AcALim',
-							value: `${maximumCurrent}}`,
+							value: 11,
 						},
 					],
 				},
 				{
 					headers: {
-						accept: 'application/json, text/plain, */*',
-						'content-type': 'application/json',
+						Accept: 'application/json, text/plain, */*',
+						'Content-Type': 'application/json',
 						Authorization: `Bearer ${this.connectionToken}`,
 					},
 				},
