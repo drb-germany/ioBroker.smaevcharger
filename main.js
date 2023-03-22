@@ -37,6 +37,7 @@ class Smaevcharger extends utils.Adapter {
 		this.updateRead = null;
 		this.updateWrite = null;
 		this.connectionToken = '';
+		this.connectionTokenReceived = new Date();
 	}
 
 	async intervalRead() {
@@ -45,7 +46,7 @@ class Smaevcharger extends utils.Adapter {
 		}
 
 		// do work
-		this.log.info(`Simulating read`);
+		this.log.debug(`Calling read`);
 
 		// make sure we have a token
 		await this.getToken();
@@ -63,17 +64,30 @@ class Smaevcharger extends utils.Adapter {
 			.then((response) => {
 				this.log.debug(`Response code ${response.status}`);
 				if (response.status === 200) {
-					console.log(response.data);
-					this.log.info(`Data: ${response.data}`);
 					// parse data
 					response.data.forEach((item) => {
+						if (item.channelId === 'Measurement.Chrg.ModSw') {
+							// record this for understanding
+							this.setState('rawdata.ChrgModSw', item.values[0].value, true);
+
+							if (item.values[0].value === 4718)
+								this.setState('charger.switchStateFastCharge', true, true);
+							else this.setState('charger.switchStateFastCharge', false, true);
+						}
 						if (item.channelId === 'Measurement.Operation.EVeh.Health') {
-							//if (item.values[0].value) this.setState('charger.carConnected', false, true);
-							//this.setState('charger.carCharging', false, true);
-							//this.setState('charger.currentCharge', item.values[0].value, true);
+							// record this for understanding
+							this.setState('rawdata.EVehHealth', item.values[0].value, true);
+
+							// do this later after understanding the different states
+							//this.setState('charger.health', item.values[0].value, true);
 						}
 						if (item.channelId === 'Measurement.Operation.EVeh.ChaStt') {
+							// record this for understanding
+							this.setState('rawdata.EVehChaStt', item.values[0].value, true);
+
+							// value of 5169 means that the car is connected
 							if (item.values[0].value === 5169) this.setState('charger.carConnected', true, true);
+							// 200111: not connected
 							else this.setState('charger.carConnected', false, true);
 						}
 						if (item.channelId === 'Measurement.ChaSess.WhIn') {
@@ -82,6 +96,15 @@ class Smaevcharger extends utils.Adapter {
 						if (item.channelId === 'Measurement.Metering.GridMs.TotWIn') {
 							this.setState('charger.currentPower', item.values[0].value, true);
 						}
+						if (item.channelId === 'Measurement.GridMs.A.phsA') {
+							this.setState('charger.currentPhaseA', item.values[0].value, true);
+						}
+						if (item.channelId === 'Measurement.GridMs.A.phsB') {
+							this.setState('charger.currentPhaseB', item.values[0].value, true);
+						}
+						if (item.channelId === 'Measurement.GridMs.A.phsC') {
+							this.setState('charger.currentPhaseC', item.values[0].value, true);
+						}
 					});
 				} else {
 					this.log.error(`Error, could not connect, response code ${response.status}`);
@@ -89,6 +112,8 @@ class Smaevcharger extends utils.Adapter {
 			})
 			.catch((error) => {
 				this.log.error(`Could not connect to charger, error: ${error}`);
+				// we reset the connectionToken if we were not able to get data
+				this.connectionToken = '';
 			});
 
 		this.updateRead = this.setTimeout(async () => {
@@ -103,7 +128,7 @@ class Smaevcharger extends utils.Adapter {
 		}
 
 		// do work
-		this.log.info(`Simulating write`);
+		this.log.debug(`Calling write`);
 
 		this.updateWrite = this.setTimeout(async () => {
 			this.updateWrite = null;
@@ -112,8 +137,8 @@ class Smaevcharger extends utils.Adapter {
 	}
 
 	async getToken() {
-		// if we do not have a connectionToken, we have to get one
-		if (!this.connectionToken) {
+		// if we do not have a connectionToken, we have to get one, or if the one we have is older then one hour, we renew
+		if (!this.connectionToken || (new Date().getTime() - this.connectionTokenReceived.getTime()) / 1000 > 3600) {
 			await instance
 				.post(
 					`https://${this.config.chargerip}/api/v1/token`,
@@ -134,6 +159,7 @@ class Smaevcharger extends utils.Adapter {
 					if (response.status === 200) {
 						this.setState('info.connection', true, true);
 						this.connectionToken = response.data.access_token;
+						this.connectionTokenReceived = new Date();
 						this.log.debug(`Token received`);
 					} else {
 						this.setState('info.connection', false, true);
@@ -182,10 +208,21 @@ class Smaevcharger extends utils.Adapter {
 			},
 			native: {},
 		});
+		await this.setObjectNotExistsAsync('charger.switchStateFastCharge', {
+			type: 'state',
+			common: {
+				name: 'SMA EV Charger switch is set to fast charge',
+				type: 'boolean',
+				role: 'indicator',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
 		await this.setObjectNotExistsAsync('charger.currentEnergy', {
 			type: 'state',
 			common: {
-				name: 'Total energy for this process',
+				name: 'Total energy for this process (Wh)',
 				type: 'number',
 				role: 'value',
 				read: true,
@@ -196,7 +233,41 @@ class Smaevcharger extends utils.Adapter {
 		await this.setObjectNotExistsAsync('charger.currentPower', {
 			type: 'state',
 			common: {
-				name: 'Current power',
+				name: 'Current power (W)',
+				unit: 'A',
+				type: 'number',
+				role: 'value',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync('charger.currentPhaseA', {
+			type: 'state',
+			common: {
+				name: 'Current on phase A (A)',
+				type: 'number',
+				role: 'value',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync('charger.currentPhaseB', {
+			type: 'state',
+			common: {
+				name: 'Current on phase B (A)',
+				type: 'number',
+				role: 'value',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync('charger.currentPhaseC', {
+			type: 'state',
+			common: {
+				name: 'Current on phase C (A)',
 				type: 'number',
 				role: 'value',
 				read: true,
@@ -205,8 +276,40 @@ class Smaevcharger extends utils.Adapter {
 			native: {},
 		});
 
-		//this.setState('charger.carConnected', false, true);
-		//this.setState('charger.carCharging', false, true);
+		await this.setObjectNotExistsAsync('rawdata.EVehHealth', {
+			type: 'state',
+			common: {
+				name: 'EVehHealth',
+				type: 'number',
+				role: 'value',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync('rawdata.EVehChaStt', {
+			type: 'state',
+			common: {
+				name: 'EVehChaStt',
+				type: 'number',
+				role: 'value',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
+		await this.setObjectNotExistsAsync('rawdata.ChrgModSw', {
+			type: 'state',
+			common: {
+				name: 'ChrgModSw',
+				type: 'number',
+				role: 'value',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
+
 		this.intervalRead();
 		this.intervalWrite();
 	}
