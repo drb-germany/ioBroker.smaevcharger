@@ -46,11 +46,12 @@ class Smaevcharger extends utils.Adapter {
 		}
 
 		// do work
-		this.log.debug(`Calling read`);
+		//this.log.debug(`Calling read`);
 
 		// make sure we have a token
 		await this.getToken();
 
+		// read list of live values
 		instance
 			.post(`https://${this.config.chargerip}/api/v1/measurements/live/`, [{ componentId: 'IGULD:SELF' }], {
 				headers: {
@@ -60,7 +61,7 @@ class Smaevcharger extends utils.Adapter {
 				},
 			})
 			.then((response) => {
-				this.log.debug(`Response code ${response.status}`);
+				//this.log.debug(`Response code ${response.status}`);
 				if (response.status === 200) {
 					// parse data
 					response.data.forEach((item) => {
@@ -127,25 +128,7 @@ class Smaevcharger extends utils.Adapter {
 				this.connectionToken = '';
 			});
 
-		this.updateRead = this.setTimeout(async () => {
-			this.updateRead = null;
-			await this.intervalRead();
-		}, this.config.updateRateRead * 1000);
-	}
-
-	async intervalWrite() {
-		if (this.updateWrite) {
-			this.clearTimeout(this.updateWrite);
-		}
-
-		// do work
-		this.log.debug(`Calling write`);
-
-		// make sure we have a token
-		await this.getToken();
-
-		const maximumCurrent = this.getStateAsync('charger.maximumCurrent');
-
+		// read params
 		await instance
 			.post(
 				`https://${this.config.chargerip}/api/v1/parameters/search/`,
@@ -160,15 +143,34 @@ class Smaevcharger extends utils.Adapter {
 			)
 			.then((response) => {
 				// parse response
-				this.log.debug(`Response code ${response.status}`);
+				//this.log.debug(`Response code ${response.status}`);
 				if (response.status === 200) {
 					// parse data
 					response.data[0].values.forEach((item) => {
 						if (item.channelId === 'Parameter.Inverter.AcALim') {
-							// record this for understanding
-							console.log(`Item: ${item}`);
-							console.log(`Item value: ${item.value}`);
 							this.setState('charger.maximumCurrent', Number.parseFloat(item.value), true);
+						}
+						if (item.channelId === 'Parameter.Chrg.ActChaMod') {
+							// Betriebsart des Ladevorgangs
+							// 4718 -> ON (Schnellladen)
+							// 4721 -> OFF (Ladestopp)
+							if (item.value == 4718) {
+								this.setState('charger.activateStation', true, true);
+							} else {
+								// 4721
+								this.setState('charger.activateStation', false, true);
+							}
+						}
+						if (item.channelId === 'Parameter.Chrg.ChrgApv') {
+							// Manuelle Ladefreigabe
+							// 5171 -> OFF (Ladesperre)
+							// 5172 -> ON (Ladefreigabe)
+							if (item.value == 5171) {
+								this.setState('charger.lockStation', true, true);
+							} else {
+								// 5172
+								this.setState('charger.lockStation', false, true);
+							}
 						}
 					});
 				} else {
@@ -181,30 +183,50 @@ class Smaevcharger extends utils.Adapter {
 				this.connectionToken = '';
 			});
 
-		await instance
-			.put(
-				`https://${this.config.chargerip}/api/v1/parameters/IGULD:SELF`,
-				{
-					values: [
-						{
-							channelId: 'Parameter.Inverter.AcALim',
-							value: 11,
-						},
-					],
-				},
-				{
-					headers: {
-						Accept: 'application/json, text/plain, */*',
-						'Content-Type': 'application/json',
-						Authorization: `Bearer ${this.connectionToken}`,
-					},
-				},
-			)
-			.catch((error) => {
-				this.log.error(`Could not write parameters to charger, error: ${error}`);
-				// we reset the connectionToken if we were not able to get data
-				this.connectionToken = '';
-			});
+		this.updateRead = this.setTimeout(async () => {
+			this.updateRead = null;
+			await this.intervalRead();
+		}, this.config.updateRateRead * 1000);
+	}
+
+	async intervalWrite() {
+		if (this.updateWrite) {
+			this.clearTimeout(this.updateWrite);
+		}
+
+		// do work
+		//this.log.debug(`Calling write`);
+
+		// make sure we have a token
+		// getting token is done only in the read section
+		//await this.getToken();
+
+		const maximumCurrent = this.getStateAsync('charger.maximumCurrent');
+
+		// await instance
+		// 	.put(
+		// 		`https://${this.config.chargerip}/api/v1/parameters/IGULD:SELF`,
+		// 		{
+		// 			values: [
+		// 				{
+		// 					channelId: 'Parameter.Inverter.AcALim',
+		// 					value: 11,
+		// 				},
+		// 			],
+		// 		},
+		// 		{
+		// 			headers: {
+		// 				Accept: 'application/json, text/plain, */*',
+		// 				'Content-Type': 'application/json',
+		// 				Authorization: `Bearer ${this.connectionToken}`,
+		// 			},
+		// 		},
+		// 	)
+		// 	.catch((error) => {
+		// 		this.log.error(`Could not write parameters to charger, error: ${error}`);
+		// 		// we reset the connectionToken if we were not able to get data
+		// 		this.connectionToken = '';
+		// 	});
 
 		this.updateWrite = this.setTimeout(async () => {
 			this.updateWrite = null;
@@ -215,6 +237,10 @@ class Smaevcharger extends utils.Adapter {
 	async getToken() {
 		// if we do not have a connectionToken, we have to get one, or if the one we have is older then one hour, we renew
 		if (!this.connectionToken || (new Date().getTime() - this.connectionTokenReceived.getTime()) / 1000 > 3600) {
+			this.log.debug(`Getting token`);
+			if ((new Date().getTime() - this.connectionTokenReceived.getTime()) / 1000 > 3600)
+				this.log.debug(`Token was older than 3600 seconds`);
+
 			await instance
 				.post(
 					`https://${this.config.chargerip}/api/v1/token`,
@@ -231,7 +257,7 @@ class Smaevcharger extends utils.Adapter {
 					},
 				)
 				.then((response) => {
-					this.log.debug(`Response code ${response.status}`);
+					//this.log.debug(`Response code ${response.status}`);
 					if (response.status === 200) {
 						this.setState('info.connection', true, true);
 						this.connectionToken = response.data.access_token;
@@ -276,7 +302,7 @@ class Smaevcharger extends utils.Adapter {
 		await this.setObjectNotExistsAsync('charger.carCharging', {
 			type: 'state',
 			common: {
-				name: 'Car is charging',
+				name: 'Car charging is allowed',
 				type: 'boolean',
 				role: 'indicator',
 				read: true,
@@ -413,6 +439,17 @@ class Smaevcharger extends utils.Adapter {
 			},
 			native: {},
 		});
+		await this.setObjectNotExistsAsync('charger.lockStation', {
+			type: 'state',
+			common: {
+				name: 'Lock station',
+				type: 'boolean',
+				role: 'switch',
+				read: true,
+				write: true,
+			},
+			native: {},
+		});
 		await this.setObjectNotExistsAsync('charger.maximumCurrent', {
 			type: 'state',
 			common: {
@@ -425,6 +462,9 @@ class Smaevcharger extends utils.Adapter {
 			},
 			native: {},
 		});
+
+		// make sure we have a token before callin read/write, otherwise we get token twice
+		await this.getToken();
 
 		this.intervalRead();
 		this.intervalWrite();
