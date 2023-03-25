@@ -66,12 +66,21 @@ class Smaevcharger extends utils.Adapter {
 					// parse data
 					response.data.forEach((item) => {
 						if (item.channelId === 'Measurement.Chrg.ModSw') {
-							// record this for understanding
+							// record this for understanding (debugging)
 							this.setState('rawdata.ChrgModSw', item.values[0].value, true);
 
 							if (item.values[0].value === 4718)
-								this.setState('charger.switchStateFastCharge', true, true);
-							else this.setState('charger.switchStateFastCharge', false, true);
+								this.setState('charger.switchStateFastCharge', {
+									val: true,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
+							else
+								this.setState('charger.switchStateFastCharge', {
+									val: false,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
 						}
 						if (item.channelId === 'Measurement.Operation.EVeh.Health') {
 							// record this for understanding
@@ -89,33 +98,81 @@ class Smaevcharger extends utils.Adapter {
 							// 200111: not connected
 
 							if (item.values[0].value === 5169) {
-								this.setState('charger.carConnected', true, true);
-								this.setState('charger.carCanCharge', false, true);
+								this.setState('charger.carConnected', {
+									val: true,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
+								this.setState('charger.carCanCharge', {
+									val: false,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
 							} else if (item.values[0].value === 200113) {
-								this.setState('charger.carConnected', true, true);
-								this.setState('charger.carCanCharge', true, true);
+								this.setState('charger.carConnected', {
+									val: true,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
+								this.setState('charger.carCanCharge', {
+									val: true,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
 							} else if (item.values[0].value === 200111) {
-								this.setState('charger.carConnected', false, true);
-								this.setState('charger.carCanCharge', false, true);
+								this.setState('charger.carConnected', {
+									val: false,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
+								this.setState('charger.carCanCharge', {
+									val: false,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
 							}
 						}
 						if (item.channelId === 'Measurement.ChaSess.WhIn') {
-							this.setState('charger.currentEnergy', item.values[0].value, true);
+							this.setState('charger.currentEnergy', {
+								val: item.values[0].value,
+								ack: true,
+								expire: 2 * this.config.updateRateRead,
+							});
 						}
 						if (item.channelId === 'Measurement.Metering.GridMs.TotWhIn') {
-							this.setState('charger.totalEnergy', item.values[0].value, true);
+							this.setState('charger.totalEnergy', {
+								val: item.values[0].value,
+								ack: true,
+								expire: 2 * this.config.updateRateRead,
+							});
 						}
 						if (item.channelId === 'Measurement.Metering.GridMs.TotWIn') {
-							this.setState('charger.currentPower', item.values[0].value, true);
+							this.setState('charger.currentPower', {
+								val: item.values[0].value,
+								ack: true,
+								expire: 2 * this.config.updateRateRead,
+							});
 						}
 						if (item.channelId === 'Measurement.GridMs.A.phsA') {
-							this.setState('charger.currentPhaseA', -item.values[0].value, true);
+							this.setState('charger.currentPhaseA', {
+								val: -item.values[0].value,
+								ack: true,
+								expire: 2 * this.config.updateRateRead,
+							});
 						}
 						if (item.channelId === 'Measurement.GridMs.A.phsB') {
-							this.setState('charger.currentPhaseB', -item.values[0].value, true);
+							this.setState('charger.currentPhaseB', {
+								val: -item.values[0].value,
+								ack: true,
+								expire: 2 * this.config.updateRateRead,
+							});
 						}
 						if (item.channelId === 'Measurement.GridMs.A.phsC') {
-							this.setState('charger.currentPhaseC', -item.values[0].value, true);
+							this.setState('charger.currentPhaseC', {
+								val: -item.values[0].value,
+								ack: true,
+								expire: 2 * this.config.updateRateRead,
+							});
 						}
 					});
 				} else {
@@ -155,10 +212,18 @@ class Smaevcharger extends utils.Adapter {
 							// 4718 -> ON (Schnellladen)
 							// 4721 -> OFF (Ladestopp)
 							if (item.value == 4718) {
-								this.setState('charger.activateStation', true, true);
+								this.setState('charger.activateStation', {
+									val: true,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
 							} else {
 								// 4721
-								this.setState('charger.activateStation', false, true);
+								this.setState('charger.activateStation', {
+									val: false,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
 							}
 						}
 						if (item.channelId === 'Parameter.Chrg.ChrgApv') {
@@ -166,10 +231,18 @@ class Smaevcharger extends utils.Adapter {
 							// 5171 -> OFF (Ladesperre)
 							// 5172 -> ON (Ladefreigabe)
 							if (item.value == 5171) {
-								this.setState('charger.lockStation', true, true);
+								this.setState('charger.lockStation', {
+									val: true,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
 							} else {
 								// 5172
-								this.setState('charger.lockStation', false, true);
+								this.setState('charger.lockStation', {
+									val: false,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
 							}
 						}
 					});
