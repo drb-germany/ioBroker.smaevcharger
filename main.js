@@ -376,7 +376,7 @@ class Smaevcharger extends utils.Adapter {
 				})
 				.catch((error) => {
 					this.setState('info.connection', false, true);
-					this.log.error(`Could not get token from charger, error: ${error.response.data}`);
+					this.log.error(`Could not get token from charger, error: ${error}`);
 				});
 		}
 	}
