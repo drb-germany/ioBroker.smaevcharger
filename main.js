@@ -29,7 +29,7 @@ class Smaevcharger extends utils.Adapter {
 			name: 'smaevcharger',
 		});
 		this.on('ready', this.onReady.bind(this));
-		// this.on('stateChange', this.onStateChange.bind(this));
+		this.on('stateChange', this.onStateChange.bind(this));
 		// this.on('objectChange', this.onObjectChange.bind(this));
 		// this.on('message', this.onMessage.bind(this));
 		this.on('unload', this.onUnload.bind(this));
@@ -212,14 +212,14 @@ class Smaevcharger extends utils.Adapter {
 							// 4718 -> ON (Schnellladen)
 							// 4721 -> OFF (Ladestopp)
 							if (item.value == 4718) {
-								this.setState('charger.activateStation', {
+								this.setState('charger.allowCharging', {
 									val: true,
 									ack: true,
 									expire: 2 * this.config.updateRateRead,
 								});
 							} else {
 								// 4721
-								this.setState('charger.activateStation', {
+								this.setState('charger.allowCharging', {
 									val: false,
 									ack: true,
 									expire: 2 * this.config.updateRateRead,
@@ -503,10 +503,10 @@ class Smaevcharger extends utils.Adapter {
 			native: {},
 		});
 
-		await this.setObjectNotExistsAsync('charger.activateStation', {
+		await this.setObjectNotExistsAsync('charger.allowCharging', {
 			type: 'state',
 			common: {
-				name: 'Activate station',
+				name: 'Allow charging',
 				type: 'boolean',
 				role: 'switch',
 				read: true,
@@ -514,6 +514,7 @@ class Smaevcharger extends utils.Adapter {
 			},
 			native: {},
 		});
+		this.subscribeStates('charger.allowCharging');
 		await this.setObjectNotExistsAsync('charger.lockStation', {
 			type: 'state',
 			common: {
@@ -525,6 +526,7 @@ class Smaevcharger extends utils.Adapter {
 			},
 			native: {},
 		});
+		this.subscribeStates('charger.lockStation');
 		await this.setObjectNotExistsAsync('charger.maximumCurrent', {
 			type: 'state',
 			common: {
@@ -537,6 +539,9 @@ class Smaevcharger extends utils.Adapter {
 			},
 			native: {},
 		});
+		this.subscribeStates('charger.maximumCurrent');
+
+		//this.subscribeStates('charger.*');
 
 		// make sure we have a token before callin read/write, otherwise we get token twice
 		await this.getToken();
@@ -586,15 +591,15 @@ class Smaevcharger extends utils.Adapter {
 	 * @param {string} id
 	 * @param {ioBroker.State | null | undefined} state
 	 */
-	// onStateChange(id, state) {
-	// 	if (state) {
-	// 		// The state was changed
-	// 		this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
-	// 	} else {
-	// 		// The state was deleted
-	// 		this.log.info(`state ${id} deleted`);
-	// 	}
-	// }
+	onStateChange(id, state) {
+		if (state) {
+			// The state was changed
+			this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
+		} else {
+			// The state was deleted
+			this.log.info(`state ${id} deleted`);
+		}
+	}
 
 	// If you need to accept messages in your adapter, uncomment the following block and the corresponding line in the constructor.
 	// /**
