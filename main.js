@@ -212,14 +212,14 @@ class Smaevcharger extends utils.Adapter {
 				if (response.status === 200) {
 					// parse data
 					response.data[0].values.forEach((item) => {
-						if (item.channelId === 'Parameter.Inverter.AcALim') {
+						if (item.channelId === 'Parameter.Inverter.AcALim' && !this.setMaximumCurrent) {
 							this.setState('charger.maximumCurrent', {
 								val: Number.parseFloat(item.value),
 								ack: true,
 								expire: 2 * this.config.updateRateRead,
 							});
 						}
-						if (item.channelId === 'Parameter.Chrg.ActChaMod') {
+						if (item.channelId === 'Parameter.Chrg.ActChaMod' && !this.setAllowCharging) {
 							// Betriebsart des Ladevorgangs
 							// 4718 -> ON (Schnellladen)
 							// 4721 -> OFF (Ladestopp)
@@ -238,7 +238,7 @@ class Smaevcharger extends utils.Adapter {
 								});
 							}
 						}
-						if (item.channelId === 'Parameter.Chrg.ChrgApv') {
+						if (item.channelId === 'Parameter.Chrg.ChrgApv' && !this.setLockStation) {
 							// Manuelle Ladefreigabe
 							// 5171 -> OFF (Ladesperre)
 							// 5172 -> ON (Ladefreigabe)
