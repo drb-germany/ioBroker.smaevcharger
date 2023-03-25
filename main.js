@@ -90,13 +90,13 @@ class Smaevcharger extends utils.Adapter {
 
 							if (item.values[0].value === 5169) {
 								this.setState('charger.carConnected', true, true);
-								this.setState('charger.carCharging', false, true);
+								this.setState('charger.carCanCharge', false, true);
 							} else if (item.values[0].value === 200113) {
 								this.setState('charger.carConnected', true, true);
-								this.setState('charger.carCharging', true, true);
+								this.setState('charger.carCanCharge', true, true);
 							} else if (item.values[0].value === 200111) {
 								this.setState('charger.carConnected', false, true);
-								this.setState('charger.carCharging', false, true);
+								this.setState('charger.carCanCharge', false, true);
 							}
 						}
 						if (item.channelId === 'Measurement.ChaSess.WhIn') {
@@ -185,7 +185,7 @@ class Smaevcharger extends utils.Adapter {
 
 		this.updateRead = this.setTimeout(async () => {
 			this.updateRead = null;
-			await this.intervalRead();
+			this.intervalRead();
 		}, this.config.updateRateRead * 1000);
 	}
 
@@ -230,7 +230,7 @@ class Smaevcharger extends utils.Adapter {
 
 		this.updateWrite = this.setTimeout(async () => {
 			this.updateWrite = null;
-			await this.intervalWrite();
+			this.intervalWrite();
 		}, this.config.updateRateWrite * 1000);
 	}
 
@@ -239,7 +239,7 @@ class Smaevcharger extends utils.Adapter {
 		if (!this.connectionToken || (new Date().getTime() - this.connectionTokenReceived.getTime()) / 1000 > 3600) {
 			this.log.debug(`Getting token`);
 			if ((new Date().getTime() - this.connectionTokenReceived.getTime()) / 1000 > 3600)
-				this.log.debug(`Token was older than 3600 seconds`);
+				this.log.debug(`Token was older than 3600 seconds, renewing token`);
 
 			await instance
 				.post(
@@ -261,15 +261,17 @@ class Smaevcharger extends utils.Adapter {
 					if (response.status === 200) {
 						this.setState('info.connection', true, true);
 						this.connectionToken = response.data.access_token;
+						// remember timestamp, so we can renew in 60 minutes
 						this.connectionTokenReceived = new Date();
 						this.log.debug(`Token received`);
 					} else {
 						this.setState('info.connection', false, true);
-						this.log.error(`Error, could not connect, response code ${response.status}`);
+						this.log.error(`Error, could not get token, response code ${response.status}`);
 					}
 				})
 				.catch((error) => {
-					this.log.error(`Could not connect to charger, error: ${error}`);
+					this.setState('info.connection', false, true);
+					this.log.error(`Could not get token from charger, error: ${error}`);
 				});
 		}
 	}
@@ -299,10 +301,10 @@ class Smaevcharger extends utils.Adapter {
 			},
 			native: {},
 		});
-		await this.setObjectNotExistsAsync('charger.carCharging', {
+		await this.setObjectNotExistsAsync('charger.carCanCharge', {
 			type: 'state',
 			common: {
-				name: 'Car charging is allowed',
+				name: 'Car is allowed to charge',
 				type: 'boolean',
 				role: 'indicator',
 				read: true,
