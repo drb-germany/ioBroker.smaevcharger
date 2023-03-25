@@ -38,6 +38,14 @@ class Smaevcharger extends utils.Adapter {
 		this.updateWrite = null;
 		this.connectionToken = '';
 		this.connectionTokenReceived = new Date();
+
+		// if set value is set, value will be written
+		this.setAllowCharging = false;
+		this.valueAllowCharging = false;
+		this.setLockStation = false;
+		this.valueLockStation = false;
+		this.setMaximumCurrent = false;
+		this.valueMaximumCurrent = 0;
 	}
 
 	async intervalRead() {
@@ -205,7 +213,11 @@ class Smaevcharger extends utils.Adapter {
 					// parse data
 					response.data[0].values.forEach((item) => {
 						if (item.channelId === 'Parameter.Inverter.AcALim') {
-							this.setState('charger.maximumCurrent', Number.parseFloat(item.value), true);
+							this.setState('charger.maximumCurrent', {
+								val: Number.parseFloat(item.value),
+								ack: true,
+								expire: 2 * this.config.updateRateRead,
+							});
 						}
 						if (item.channelId === 'Parameter.Chrg.ActChaMod') {
 							// Betriebsart des Ladevorgangs
@@ -274,32 +286,50 @@ class Smaevcharger extends utils.Adapter {
 		// getting token is done only in the read section
 		//await this.getToken();
 
-		const maximumCurrent = this.getStateAsync('charger.maximumCurrent');
+		if (this.setAllowCharging || this.setLockStation || this.setMaximumCurrent) {
+			const values = [];
+			if (this.setAllowCharging) {
+				if (this.valueAllowCharging) values.push({ channelId: 'Parameter.Chrg.ActChaMod', value: 4718 });
+				else values.push({ channelId: 'Parameter.Chrg.ActChaMod', value: 4721 });
+			}
+			if (this.setLockStation) {
+				if (this.valueLockStation) values.push({ channelId: 'Parameter.Chrg.ChrgApv', value: 5171 });
+				else values.push({ channelId: 'Parameter.Chrg.ChrgApv', value: 5172 });
+			}
+			if (this.setMaximumCurrent) {
+				values.push({ channelId: 'Parameter.Inverter.AcALim', value: this.valueMaximumCurrent });
+			}
 
-		// await instance
-		// 	.put(
-		// 		`https://${this.config.chargerip}/api/v1/parameters/IGULD:SELF`,
-		// 		{
-		// 			values: [
-		// 				{
-		// 					channelId: 'Parameter.Inverter.AcALim',
-		// 					value: 11,
-		// 				},
-		// 			],
-		// 		},
-		// 		{
-		// 			headers: {
-		// 				Accept: 'application/json, text/plain, */*',
-		// 				'Content-Type': 'application/json',
-		// 				Authorization: `Bearer ${this.connectionToken}`,
-		// 			},
-		// 		},
-		// 	)
-		// 	.catch((error) => {
-		// 		this.log.error(`Could not write parameters to charger, error: ${error}`);
-		// 		// we reset the connectionToken if we were not able to get data
-		// 		this.connectionToken = '';
-		// 	});
+			this.log.debug(`Writing values ${values}`);
+
+			await instance
+				.put(
+					`https://${this.config.chargerip}/api/v1/parameters/IGULD:SELF`,
+					{
+						values,
+					},
+					{
+						headers: {
+							Accept: 'application/json, text/plain, */*',
+							'Content-Type': 'application/json',
+							Authorization: `Bearer ${this.connectionToken}`,
+						},
+					},
+				)
+				.catch((error) => {
+					this.log.error(`Could not write parameters to charger, error: ${error}`);
+					// we reset the connectionToken if we were not able to get data
+					this.connectionToken = '';
+				});
+
+			// reset everything
+			this.setAllowCharging = false;
+			this.valueAllowCharging = false;
+			this.setLockStation = false;
+			this.valueLockStation = false;
+			this.setMaximumCurrent = false;
+			this.valueMaximumCurrent = 0;
+		}
 
 		this.updateWrite = this.setTimeout(async () => {
 			this.updateWrite = null;
@@ -591,13 +621,30 @@ class Smaevcharger extends utils.Adapter {
 	 * @param {string} id
 	 * @param {ioBroker.State | null | undefined} state
 	 */
-	onStateChange(id, state) {
+	async onStateChange(id, state) {
 		if (state) {
-			// The state was changed
-			this.log.info(`state ${id} changed: ${state.val} (ack = ${state.ack})`);
+			// The state was changed by user
+			if (state.ack === false) {
+				if (id.endsWith('charger.allowCharging')) {
+					this.setAllowCharging = true;
+					if (state.val) this.valueAllowCharging = true;
+					else this.valueAllowCharging = false;
+					console.debug(`allowCharging to ${this.valueAllowCharging}`);
+				} else if (id.endsWith('charger.lockStation')) {
+					this.setLockStation = true;
+					if (state.val) this.valueLockStation = true;
+					else this.valueLockStation = false;
+					console.debug(`valueLockStation to ${this.valueLockStation}`);
+				} else if (id.endsWith('charger.maximumCurrent')) {
+					this.setMaximumCurrent = true;
+					this.valueMaximumCurrent = Number(state.val);
+					console.debug(`valueMaximumCurrent to ${this.valueMaximumCurrent}`);
+				}
+			}
+			this.log.info(`---------------> state ${id} changed: ${state.val} (ack = ${state.ack})`);
 		} else {
 			// The state was deleted
-			this.log.info(`state ${id} deleted`);
+			this.log.info(`---------------> state ${id} deleted`);
 		}
 	}
 
