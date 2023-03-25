@@ -60,213 +60,215 @@ class Smaevcharger extends utils.Adapter {
 		await this.getToken();
 
 		// read list of live values
-		instance
-			.post(`https://${this.config.chargerip}/api/v1/measurements/live/`, [{ componentId: 'IGULD:SELF' }], {
-				headers: {
-					accept: 'application/json, text/plain, */*',
-					'content-type': 'application/json',
-					Authorization: `Bearer ${this.connectionToken}`,
-				},
-			})
-			.then((response) => {
-				//this.log.debug(`Response code ${response.status}`);
-				if (response.status === 200) {
-					// parse data
-					response.data.forEach((item) => {
-						if (item.channelId === 'Measurement.Chrg.ModSw') {
-							// record this for understanding (debugging)
-							this.setState('rawdata.ChrgModSw', item.values[0].value, true);
-
-							if (item.values[0].value === 4718)
-								this.setState('charger.switchStateFastCharge', {
-									val: true,
-									ack: true,
-									expire: 2 * this.config.updateRateRead,
-								});
-							else
-								this.setState('charger.switchStateFastCharge', {
-									val: false,
-									ack: true,
-									expire: 2 * this.config.updateRateRead,
-								});
-						}
-						if (item.channelId === 'Measurement.Operation.EVeh.Health') {
-							// record this for understanding
-							this.setState('rawdata.EVehHealth', item.values[0].value, true);
-
-							// do this later after understanding the different states
-							//this.setState('charger.health', item.values[0].value, true);
-						}
-						if (item.channelId === 'Measurement.Operation.EVeh.ChaStt') {
-							// record this for understanding
-							this.setState('rawdata.EVehChaStt', item.values[0].value, true);
-
-							// 5169: connected, not charging
-							// 200113: connected, charging
-							// 200111: not connected
-
-							if (item.values[0].value === 5169) {
-								this.setState('charger.carConnected', {
-									val: true,
-									ack: true,
-									expire: 2 * this.config.updateRateRead,
-								});
-								this.setState('charger.carCanCharge', {
-									val: false,
-									ack: true,
-									expire: 2 * this.config.updateRateRead,
-								});
-							} else if (item.values[0].value === 200113) {
-								this.setState('charger.carConnected', {
-									val: true,
-									ack: true,
-									expire: 2 * this.config.updateRateRead,
-								});
-								this.setState('charger.carCanCharge', {
-									val: true,
-									ack: true,
-									expire: 2 * this.config.updateRateRead,
-								});
-							} else if (item.values[0].value === 200111) {
-								this.setState('charger.carConnected', {
-									val: false,
-									ack: true,
-									expire: 2 * this.config.updateRateRead,
-								});
-								this.setState('charger.carCanCharge', {
-									val: false,
-									ack: true,
-									expire: 2 * this.config.updateRateRead,
-								});
-							}
-						}
-						if (item.channelId === 'Measurement.ChaSess.WhIn') {
-							this.setState('charger.currentEnergy', {
-								val: item.values[0].value,
-								ack: true,
-								expire: 2 * this.config.updateRateRead,
-							});
-						}
-						if (item.channelId === 'Measurement.Metering.GridMs.TotWhIn') {
-							this.setState('charger.totalEnergy', {
-								val: item.values[0].value,
-								ack: true,
-								expire: 2 * this.config.updateRateRead,
-							});
-						}
-						if (item.channelId === 'Measurement.Metering.GridMs.TotWIn') {
-							this.setState('charger.currentPower', {
-								val: item.values[0].value,
-								ack: true,
-								expire: 2 * this.config.updateRateRead,
-							});
-						}
-						if (item.channelId === 'Measurement.GridMs.A.phsA') {
-							this.setState('charger.currentPhaseA', {
-								val: -item.values[0].value,
-								ack: true,
-								expire: 2 * this.config.updateRateRead,
-							});
-						}
-						if (item.channelId === 'Measurement.GridMs.A.phsB') {
-							this.setState('charger.currentPhaseB', {
-								val: -item.values[0].value,
-								ack: true,
-								expire: 2 * this.config.updateRateRead,
-							});
-						}
-						if (item.channelId === 'Measurement.GridMs.A.phsC') {
-							this.setState('charger.currentPhaseC', {
-								val: -item.values[0].value,
-								ack: true,
-								expire: 2 * this.config.updateRateRead,
-							});
-						}
-					});
-				} else {
-					this.log.error(`Error, could not connect, response code ${response.status}`);
-				}
-			})
-			.catch((error) => {
-				this.log.error(`Could not connect to charger, error: ${error}`);
-				// we reset the connectionToken if we were not able to get data
-				this.connectionToken = '';
-			});
-
-		// read params
-		await instance
-			.post(
-				`https://${this.config.chargerip}/api/v1/parameters/search/`,
-				{ queryItems: [{ componentId: 'IGULD:SELF' }] },
-				{
+		if (this.connectionToken) {
+			instance
+				.post(`https://${this.config.chargerip}/api/v1/measurements/live/`, [{ componentId: 'IGULD:SELF' }], {
 					headers: {
 						accept: 'application/json, text/plain, */*',
 						'content-type': 'application/json',
 						Authorization: `Bearer ${this.connectionToken}`,
 					},
-				},
-			)
-			.then((response) => {
-				// parse response
-				//this.log.debug(`Response code ${response.status}`);
-				if (response.status === 200) {
-					// parse data
-					response.data[0].values.forEach((item) => {
-						if (item.channelId === 'Parameter.Inverter.AcALim' && !this.setMaximumCurrent) {
-							this.setState('charger.maximumCurrent', {
-								val: Number.parseFloat(item.value),
-								ack: true,
-								expire: 2 * this.config.updateRateRead,
-							});
-						}
-						if (item.channelId === 'Parameter.Chrg.ActChaMod' && !this.setAllowCharging) {
-							// Betriebsart des Ladevorgangs
-							// 4718 -> ON (Schnellladen)
-							// 4721 -> OFF (Ladestopp)
-							if (item.value == 4718) {
-								this.setState('charger.allowCharging', {
-									val: true,
-									ack: true,
-									expire: 2 * this.config.updateRateRead,
-								});
-							} else {
-								// 4721
-								this.setState('charger.allowCharging', {
-									val: false,
+				})
+				.then((response) => {
+					//this.log.debug(`Response code ${response.status}`);
+					if (response.status === 200) {
+						// parse data
+						response.data.forEach((item) => {
+							if (item.channelId === 'Measurement.Chrg.ModSw') {
+								// record this for understanding (debugging)
+								this.setState('rawdata.ChrgModSw', item.values[0].value, true);
+
+								if (item.values[0].value === 4718)
+									this.setState('charger.switchStateFastCharge', {
+										val: true,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+								else
+									this.setState('charger.switchStateFastCharge', {
+										val: false,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+							}
+							if (item.channelId === 'Measurement.Operation.EVeh.Health') {
+								// record this for understanding
+								this.setState('rawdata.EVehHealth', item.values[0].value, true);
+
+								// do this later after understanding the different states
+								//this.setState('charger.health', item.values[0].value, true);
+							}
+							if (item.channelId === 'Measurement.Operation.EVeh.ChaStt') {
+								// record this for understanding
+								this.setState('rawdata.EVehChaStt', item.values[0].value, true);
+
+								// 5169: connected, not charging
+								// 200113: connected, charging
+								// 200111: not connected
+
+								if (item.values[0].value === 5169) {
+									this.setState('charger.carConnected', {
+										val: true,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+									this.setState('charger.carCanCharge', {
+										val: false,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+								} else if (item.values[0].value === 200113) {
+									this.setState('charger.carConnected', {
+										val: true,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+									this.setState('charger.carCanCharge', {
+										val: true,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+								} else if (item.values[0].value === 200111) {
+									this.setState('charger.carConnected', {
+										val: false,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+									this.setState('charger.carCanCharge', {
+										val: false,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+								}
+							}
+							if (item.channelId === 'Measurement.ChaSess.WhIn') {
+								this.setState('charger.currentEnergy', {
+									val: item.values[0].value,
 									ack: true,
 									expire: 2 * this.config.updateRateRead,
 								});
 							}
-						}
-						if (item.channelId === 'Parameter.Chrg.ChrgApv' && !this.setLockStation) {
-							// Manuelle Ladefreigabe
-							// 5171 -> OFF (Ladesperre)
-							// 5172 -> ON (Ladefreigabe)
-							if (item.value == 5171) {
-								this.setState('charger.lockStation', {
-									val: true,
-									ack: true,
-									expire: 2 * this.config.updateRateRead,
-								});
-							} else {
-								// 5172
-								this.setState('charger.lockStation', {
-									val: false,
+							if (item.channelId === 'Measurement.Metering.GridMs.TotWhIn') {
+								this.setState('charger.totalEnergy', {
+									val: item.values[0].value,
 									ack: true,
 									expire: 2 * this.config.updateRateRead,
 								});
 							}
-						}
-					});
-				} else {
-					this.log.error(`Error, could not connect, response code ${response.status}`);
-				}
-			})
-			.catch((error) => {
-				this.log.error(`Could not get parameters from charger, error: ${error}`);
-				// we reset the connectionToken if we were not able to get data
-				this.connectionToken = '';
-			});
+							if (item.channelId === 'Measurement.Metering.GridMs.TotWIn') {
+								this.setState('charger.currentPower', {
+									val: item.values[0].value,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
+							}
+							if (item.channelId === 'Measurement.GridMs.A.phsA') {
+								this.setState('charger.currentPhaseA', {
+									val: -item.values[0].value,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
+							}
+							if (item.channelId === 'Measurement.GridMs.A.phsB') {
+								this.setState('charger.currentPhaseB', {
+									val: -item.values[0].value,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
+							}
+							if (item.channelId === 'Measurement.GridMs.A.phsC') {
+								this.setState('charger.currentPhaseC', {
+									val: -item.values[0].value,
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
+							}
+						});
+					} else {
+						this.log.error(`Error, could not connect, response code ${response.status}`);
+					}
+				})
+				.catch((error) => {
+					this.log.error(`Could not connect to charger, error: ${error}`);
+					// we reset the connectionToken if we were not able to get data
+					this.connectionToken = '';
+				});
+
+			// read params
+			await instance
+				.post(
+					`https://${this.config.chargerip}/api/v1/parameters/search/`,
+					{ queryItems: [{ componentId: 'IGULD:SELF' }] },
+					{
+						headers: {
+							accept: 'application/json, text/plain, */*',
+							'content-type': 'application/json',
+							Authorization: `Bearer ${this.connectionToken}`,
+						},
+					},
+				)
+				.then((response) => {
+					// parse response
+					//this.log.debug(`Response code ${response.status}`);
+					if (response.status === 200) {
+						// parse data
+						response.data[0].values.forEach((item) => {
+							if (item.channelId === 'Parameter.Inverter.AcALim' && !this.setMaximumCurrent) {
+								this.setState('charger.maximumCurrent', {
+									val: Number.parseFloat(item.value),
+									ack: true,
+									expire: 2 * this.config.updateRateRead,
+								});
+							}
+							if (item.channelId === 'Parameter.Chrg.ActChaMod' && !this.setAllowCharging) {
+								// Betriebsart des Ladevorgangs
+								// 4718 -> ON (Schnellladen)
+								// 4721 -> OFF (Ladestopp)
+								if (item.value == 4718) {
+									this.setState('charger.allowCharging', {
+										val: true,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+								} else {
+									// 4721
+									this.setState('charger.allowCharging', {
+										val: false,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+								}
+							}
+							if (item.channelId === 'Parameter.Chrg.ChrgApv' && !this.setLockStation) {
+								// Manuelle Ladefreigabe
+								// 5171 -> OFF (Ladesperre)
+								// 5172 -> ON (Ladefreigabe)
+								if (item.value == 5171) {
+									this.setState('charger.lockStation', {
+										val: true,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+								} else {
+									// 5172
+									this.setState('charger.lockStation', {
+										val: false,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+								}
+							}
+						});
+					} else {
+						this.log.error(`Error, could not connect, response code ${response.status}`);
+					}
+				})
+				.catch((error) => {
+					this.log.error(`Could not get parameters from charger, error: ${error}`);
+					// we reset the connectionToken if we were not able to get data
+					this.connectionToken = '';
+				});
+		}
 
 		this.updateRead = this.setTimeout(async () => {
 			this.updateRead = null;
@@ -286,7 +288,7 @@ class Smaevcharger extends utils.Adapter {
 		// getting token is done only in the read section
 		//await this.getToken();
 
-		if (this.setAllowCharging || this.setLockStation || this.setMaximumCurrent) {
+		if (this.connectionToken && (this.setAllowCharging || this.setLockStation || this.setMaximumCurrent)) {
 			const values = [];
 			if (this.setAllowCharging) {
 				if (this.valueAllowCharging) values.push({ channelId: 'Parameter.Chrg.ActChaMod', value: 4718 });
@@ -641,10 +643,10 @@ class Smaevcharger extends utils.Adapter {
 					console.debug(`valueMaximumCurrent to ${this.valueMaximumCurrent}`);
 				}
 			}
-			this.log.info(`---------------> state ${id} changed: ${state.val} (ack = ${state.ack})`);
+			this.log.debug(`---------------> state ${id} changed: ${state.val} (ack = ${state.ack})`);
 		} else {
 			// The state was deleted
-			this.log.info(`---------------> state ${id} deleted`);
+			this.log.debug(`---------------> state ${id} deleted`);
 		}
 	}
 
