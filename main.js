@@ -346,43 +346,38 @@ class Smaevcharger extends utils.Adapter {
 			if ((new Date().getTime() - this.connectionTokenReceived.getTime()) / 1000 > 3600)
 				this.log.debug(`Token was older than 3600 seconds, renewing token`);
 
-			try {
-				await instance
-					.post(
-						`https://${this.config.chargerip}/api/v1/token`,
-						{
-							grant_type: 'password',
-							username: this.config.username,
-							password: this.config.password,
+			await instance
+				.post(
+					`https://${this.config.chargerip}/api/v1/token`,
+					{
+						grant_type: 'password',
+						username: this.config.username,
+						password: this.config.password,
+					},
+					{
+						headers: {
+							accept: 'application/json, text/plain, */*',
+							'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
 						},
-						{
-							headers: {
-								accept: 'application/json, text/plain, */*',
-								'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
-							},
-						},
-					)
-					.then((response) => {
-						//this.log.debug(`Response code ${response.status}`);
-						if (response.status === 200) {
-							this.setState('info.connection', true, true);
-							this.connectionToken = response.data.access_token;
-							// remember timestamp, so we can renew in 60 minutes
-							this.connectionTokenReceived = new Date();
-							this.log.debug(`Token received`);
-						} else {
-							this.setState('info.connection', false, true);
-							this.log.error(`Error, could not get token, response code ${response.status}`);
-						}
-					});
-				// .catch((error) => {
-				// 	this.setState('info.connection', false, true);
-				// 	this.log.error(`Could not get token from charger, error: ${error}`);
-				// });
-			} catch (error) {
-				this.log.error(`Could not get token from charger, error: ${error}`);
-				this.log.error(`Could not get token from charger, error detail: ${error.reponse.data}`);
-			}
+					},
+				)
+				.then((response) => {
+					//this.log.debug(`Response code ${response.status}`);
+					if (response.status === 200) {
+						this.setState('info.connection', true, true);
+						this.connectionToken = response.data.access_token;
+						// remember timestamp, so we can renew in 60 minutes
+						this.connectionTokenReceived = new Date();
+						this.log.debug(`Token received`);
+					} else {
+						this.setState('info.connection', false, true);
+						this.log.error(`Error, could not get token, response code ${response.status}`);
+					}
+				})
+				.catch((error) => {
+					this.setState('info.connection', false, true);
+					this.log.error(`Could not get token from charger, error: ${error}`);
+				});
 		}
 	}
 
