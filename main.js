@@ -56,13 +56,16 @@ class Smaevcharger extends utils.Adapter {
 		// do work
 		//this.log.debug(`Calling read`);
 
+		// check if charger is online
+		this.testConnection();
+
 		// make sure we have a token
 		await this.getToken();
 
 		// read list of live values
 		if (this.connectionToken) {
 			instance
-				.post(`https://${this.config.chargerip}/api/v1/measurements/live/`, [{ componentId: 'IGULD:SELF' }], {
+				.post(`http://${this.config.chargerip}/api/v1/measurements/live/`, [{ componentId: 'IGULD:SELF' }], {
 					headers: {
 						accept: 'application/json, text/plain, */*',
 						'content-type': 'application/json',
@@ -102,9 +105,10 @@ class Smaevcharger extends utils.Adapter {
 								// record this for understanding
 								this.setState('rawdata.EVehChaStt', item.values[0].value, true);
 
-								// 5169: connected, not charging
-								// 200113: connected, charging
+								// 5169: connected, not charging ?
 								// 200111: not connected
+								// 200112: ? ("wallbox sleeping")
+								// 200113: connected, charging
 
 								if (item.values[0].value === 5169) {
 									this.setState('charger.carConnected', {
@@ -117,17 +121,6 @@ class Smaevcharger extends utils.Adapter {
 										ack: true,
 										expire: 2 * this.config.updateRateRead,
 									});
-								} else if (item.values[0].value === 200113) {
-									this.setState('charger.carConnected', {
-										val: true,
-										ack: true,
-										expire: 2 * this.config.updateRateRead,
-									});
-									this.setState('charger.carCanCharge', {
-										val: true,
-										ack: true,
-										expire: 2 * this.config.updateRateRead,
-									});
 								} else if (item.values[0].value === 200111) {
 									this.setState('charger.carConnected', {
 										val: false,
@@ -136,6 +129,28 @@ class Smaevcharger extends utils.Adapter {
 									});
 									this.setState('charger.carCanCharge', {
 										val: false,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+								} else if (item.values[0].value === 200112) {
+									this.setState('charger.carConnected', {
+										val: true,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+									this.setState('charger.carCanCharge', {
+										val: true,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+								} else if (item.values[0].value === 200113) {
+									this.setState('charger.carConnected', {
+										val: true,
+										ack: true,
+										expire: 2 * this.config.updateRateRead,
+									});
+									this.setState('charger.carCanCharge', {
+										val: true,
 										ack: true,
 										expire: 2 * this.config.updateRateRead,
 									});
@@ -197,7 +212,7 @@ class Smaevcharger extends utils.Adapter {
 			// read params
 			await instance
 				.post(
-					`https://${this.config.chargerip}/api/v1/parameters/search/`,
+					`http://${this.config.chargerip}/api/v1/parameters/search/`,
 					{ queryItems: [{ componentId: 'IGULD:SELF' }] },
 					{
 						headers: {
@@ -306,7 +321,7 @@ class Smaevcharger extends utils.Adapter {
 
 			await instance
 				.put(
-					`https://${this.config.chargerip}/api/v1/parameters/IGULD:SELF`,
+					`http://${this.config.chargerip}/api/v1/parameters/IGULD:SELF`,
 					{
 						values,
 					},
@@ -348,7 +363,7 @@ class Smaevcharger extends utils.Adapter {
 
 			await instance
 				.post(
-					`https://${this.config.chargerip}/api/v1/token`,
+					`http://${this.config.chargerip}/api/v1/token`,
 					{
 						grant_type: 'password',
 						username: this.config.username,
@@ -381,6 +396,28 @@ class Smaevcharger extends utils.Adapter {
 		}
 	}
 
+	async testConnection() {
+		await instance
+			.get(`http://${this.config.chargerip}/api/v1/system/info`, {
+				headers: {
+					accept: 'application/json, text/plain, */*',
+				},
+			})
+			.then((response) => {
+				if (response.status === 200) {
+					this.setState('info.chargerOnline', true, true);
+					this.log.debug(`Charger is online and system info was received`);
+				} else {
+					this.setState('info.chargerOnline', false, true);
+					this.log.error(`Error, could not get basic info, response code ${response.status}`);
+				}
+			})
+			.catch((error) => {
+				this.setState('info.chargerOnline', false, true);
+				this.log.error(`Error getting basic infos, error: ${error}`);
+			});
+	}
+
 	/**
 	 * Is called when databases are connected and adapter received configuration.
 	 */
@@ -395,6 +432,18 @@ class Smaevcharger extends utils.Adapter {
 		// await this.getToken();
 
 		// initialize variables
+		await this.setObjectNotExistsAsync('info.chargerOnline', {
+			type: 'state',
+			common: {
+				name: 'Car is connected',
+				type: 'boolean',
+				role: 'indicator',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
+
 		await this.setObjectNotExistsAsync('charger.carConnected', {
 			type: 'state',
 			common: {
