@@ -435,7 +435,7 @@ class Smaevcharger extends utils.Adapter {
 		await this.setObjectNotExistsAsync('info.chargerOnline', {
 			type: 'state',
 			common: {
-				name: 'Car is connected',
+				name: 'Charger is online (info can be read via GET request)',
 				type: 'boolean',
 				role: 'indicator',
 				read: true,
