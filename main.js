@@ -8,13 +8,13 @@
 // you need to create an adapter
 const utils = require('@iobroker/adapter-core');
 const axios = require('axios').default;
-const https = require('https');
+// const https = require('https');
 
-const instance = axios.create({
-	httpsAgent: new https.Agent({
-		rejectUnauthorized: false,
-	}),
-});
+// const instance = axios.create({
+// 	httpsAgent: new https.Agent({
+// 		rejectUnauthorized: false,
+// 	}),
+// });
 
 // Load your modules here, e.g.:
 // const fs = require("fs");
@@ -64,7 +64,7 @@ class Smaevcharger extends utils.Adapter {
 
 		// read list of live values
 		if (this.connectionToken) {
-			instance
+			axios
 				.post(`http://${this.config.chargerip}/api/v1/measurements/live/`, [{ componentId: 'IGULD:SELF' }], {
 					headers: {
 						accept: 'application/json, text/plain, */*',
@@ -210,7 +210,7 @@ class Smaevcharger extends utils.Adapter {
 				});
 
 			// read params
-			await instance
+			await axios
 				.post(
 					`http://${this.config.chargerip}/api/v1/parameters/search/`,
 					{ queryItems: [{ componentId: 'IGULD:SELF' }] },
@@ -319,7 +319,7 @@ class Smaevcharger extends utils.Adapter {
 
 			this.log.debug(`Writing values ${values}`);
 
-			await instance
+			await axios
 				.put(
 					`http://${this.config.chargerip}/api/v1/parameters/IGULD:SELF`,
 					{
@@ -361,7 +361,7 @@ class Smaevcharger extends utils.Adapter {
 			if ((new Date().getTime() - this.connectionTokenReceived.getTime()) / 1000 > 3600)
 				this.log.debug(`Token was older than 3600 seconds, renewing token`);
 
-			await instance
+			await axios
 				.post(
 					`http://${this.config.chargerip}/api/v1/token`,
 					{
@@ -397,7 +397,7 @@ class Smaevcharger extends utils.Adapter {
 	}
 
 	async testConnection() {
-		await instance
+		await axios
 			.get(`http://${this.config.chargerip}/api/v1/system/info`, {
 				headers: {
 					accept: 'application/json, text/plain, */*',
