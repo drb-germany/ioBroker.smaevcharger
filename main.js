@@ -390,9 +390,9 @@ class Smaevcharger extends utils.Adapter {
 					if (error.response) {
 						// The request was made and the server responded with a status code
 						// that falls out of the range of 2xx
-						this.log.error(`Response: ${error.response.data}`);
-						this.log.error(`Status: ${error.response.status}`);
-						this.log.error(`Headers: ${error.response.headers}`);
+						this.log.error(`Response: ${JSON.stringify(error.response.data)}`);
+						this.log.error(`Status: ${JSON.stringify(error.response.status)}`);
+						this.log.error(`Headers: ${JSON.stringify(error.response.headers)}`);
 					} else if (error.request) {
 						// The request was made but no response was received
 						// `error.request` is an instance of XMLHttpRequest in the browser and an instance of
@@ -402,7 +402,7 @@ class Smaevcharger extends utils.Adapter {
 						// Something happened in setting up the request that triggered an Error
 						this.log.error(`Error: ${error.message}`);
 					}
-					this.log.error(`Config: ${error.config}`);
+					this.log.error(`Config: ${JSON.stringify(error.config)}`);
 				});
 		}
 	}
