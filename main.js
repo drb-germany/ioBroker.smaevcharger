@@ -8,6 +8,8 @@
 // you need to create an adapter
 const utils = require('@iobroker/adapter-core');
 const axios = require('axios').default;
+const fetch = require('node-fetch');
+
 // const https = require('https');
 
 // const instance = axios.create({
@@ -352,6 +354,52 @@ class Smaevcharger extends utils.Adapter {
 	}
 
 	async getToken() {
+		// if we do not have a connectionToken, we have to get one, or if the one we have is older then one hour, we renew
+		if (!this.connectionToken || (new Date().getTime() - this.connectionTokenReceived.getTime()) / 1000 > 3600) {
+			this.log.debug(`Getting token`);
+			if ((new Date().getTime() - this.connectionTokenReceived.getTime()) / 1000 > 3600)
+				this.log.debug(`Token was older than 3600 seconds, renewing token`);
+
+			const details = {
+				grant_type: 'password',
+				username: this.config.username,
+				password: this.config.password,
+			};
+
+			const formBody = [];
+			for (const property in details) {
+				const encodedKey = encodeURIComponent(property);
+				const encodedValue = encodeURIComponent(details[property]);
+				formBody.push(encodedKey + '=' + encodedValue);
+			}
+			const finalFormBody = formBody.join('&');
+
+			const response = await fetch(`http://${this.config.chargerip}/api/v1/token`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+				},
+				body: finalFormBody,
+			});
+
+			if (response.status === 200) {
+				const data = await response.json();
+
+				this.setState('info.connection', true, true);
+				this.connectionToken = data.access_token;
+
+				// remember timestamp, so we can renew in 60 minutes
+				this.connectionTokenReceived = new Date();
+				this.log.debug(`Token received`);
+			} else {
+				this.setState('info.connection', false, true);
+				this.log.error(`Error, could not get token, response code ${response.status}`);
+			}
+		}
+	}
+
+	async getTokenAxios() {
+		// causes error 500
 		// if we do not have a connectionToken, we have to get one, or if the one we have is older then one hour, we renew
 		if (!this.connectionToken || (new Date().getTime() - this.connectionTokenReceived.getTime()) / 1000 > 3600) {
 			this.log.debug(`Getting token`);
