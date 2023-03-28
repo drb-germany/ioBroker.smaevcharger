@@ -385,7 +385,7 @@ class Smaevcharger extends utils.Adapter {
 						this.log.error(`Error, could not get token, response code ${response.status}`);
 					}
 				})
-				.catch(function (error) {
+				.catch((error) => {
 					this.setState('info.connection', false, true);
 					if (error.response) {
 						// The request was made and the server responded with a status code
