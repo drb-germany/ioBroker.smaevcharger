@@ -106,56 +106,59 @@ class Smaevcharger extends utils.Adapter {
 								// record this for understanding
 								this.setState('rawdata.EVehChaStt', item.values[0].value, true);
 
+								// status: still working out what this means
+								// will be converted to meaningful values once understood
+
 								// 5169: connected, not charging ?
 								// 200111: not connected
 								// 200112: ? ("wallbox sleeping")
 								// 200113: connected, charging
 
-								if (item.values[0].value === 5169) {
-									this.setState('charger.carConnected', {
-										val: true,
-										ack: true,
-										expire: 2 * this.config.updateRateRead,
-									});
-									this.setState('charger.carCanCharge', {
-										val: false,
-										ack: true,
-										expire: 2 * this.config.updateRateRead,
-									});
-								} else if (item.values[0].value === 200111) {
-									this.setState('charger.carConnected', {
-										val: false,
-										ack: true,
-										expire: 2 * this.config.updateRateRead,
-									});
-									this.setState('charger.carCanCharge', {
-										val: false,
-										ack: true,
-										expire: 2 * this.config.updateRateRead,
-									});
-								} else if (item.values[0].value === 200112) {
-									this.setState('charger.carConnected', {
-										val: true,
-										ack: true,
-										expire: 2 * this.config.updateRateRead,
-									});
-									this.setState('charger.carCanCharge', {
-										val: true,
-										ack: true,
-										expire: 2 * this.config.updateRateRead,
-									});
-								} else if (item.values[0].value === 200113) {
-									this.setState('charger.carConnected', {
-										val: true,
-										ack: true,
-										expire: 2 * this.config.updateRateRead,
-									});
-									this.setState('charger.carCanCharge', {
-										val: true,
-										ack: true,
-										expire: 2 * this.config.updateRateRead,
-									});
-								}
+								// if (item.values[0].value === 5169) {
+								// 	this.setState('charger.carConnected', {
+								// 		val: true,
+								// 		ack: true,
+								// 		expire: 2 * this.config.updateRateRead,
+								// 	});
+								// 	this.setState('charger.carCanCharge', {
+								// 		val: false,
+								// 		ack: true,
+								// 		expire: 2 * this.config.updateRateRead,
+								// 	});
+								// } else if (item.values[0].value === 200111) {
+								// 	this.setState('charger.carConnected', {
+								// 		val: false,
+								// 		ack: true,
+								// 		expire: 2 * this.config.updateRateRead,
+								// 	});
+								// 	this.setState('charger.carCanCharge', {
+								// 		val: false,
+								// 		ack: true,
+								// 		expire: 2 * this.config.updateRateRead,
+								// 	});
+								// } else if (item.values[0].value === 200112) {
+								// 	this.setState('charger.carConnected', {
+								// 		val: true,
+								// 		ack: true,
+								// 		expire: 2 * this.config.updateRateRead,
+								// 	});
+								// 	this.setState('charger.carCanCharge', {
+								// 		val: true,
+								// 		ack: true,
+								// 		expire: 2 * this.config.updateRateRead,
+								// 	});
+								// } else if (item.values[0].value === 200113) {
+								// 	this.setState('charger.carConnected', {
+								// 		val: true,
+								// 		ack: true,
+								// 		expire: 2 * this.config.updateRateRead,
+								// 	});
+								// 	this.setState('charger.carCanCharge', {
+								// 		val: true,
+								// 		ack: true,
+								// 		expire: 2 * this.config.updateRateRead,
+								// 	});
+								// }
 							}
 							if (item.channelId === 'Measurement.ChaSess.WhIn') {
 								this.setState('charger.currentEnergy', {
@@ -499,28 +502,29 @@ class Smaevcharger extends utils.Adapter {
 			native: {},
 		});
 
-		await this.setObjectNotExistsAsync('charger.carConnected', {
-			type: 'state',
-			common: {
-				name: 'Car is connected',
-				type: 'boolean',
-				role: 'indicator',
-				read: true,
-				write: false,
-			},
-			native: {},
-		});
-		await this.setObjectNotExistsAsync('charger.carCanCharge', {
-			type: 'state',
-			common: {
-				name: 'Car is allowed to charge',
-				type: 'boolean',
-				role: 'indicator',
-				read: true,
-				write: false,
-			},
-			native: {},
-		});
+		// await this.setObjectNotExistsAsync('charger.carConnected', {
+		// 	type: 'state',
+		// 	common: {
+		// 		name: 'Car is connected',
+		// 		type: 'boolean',
+		// 		role: 'indicator',
+		// 		read: true,
+		// 		write: false,
+		// 	},
+		// 	native: {},
+		// });
+		// await this.setObjectNotExistsAsync('charger.carCanCharge', {
+		// 	type: 'state',
+		// 	common: {
+		// 		name: 'Car is allowed to charge',
+		// 		type: 'boolean',
+		// 		role: 'indicator',
+		// 		read: true,
+		// 		write: false,
+		// 	},
+		// 	native: {},
+		// });
+
 		await this.setObjectNotExistsAsync('charger.switchStateFastCharge', {
 			type: 'state',
 			common: {
