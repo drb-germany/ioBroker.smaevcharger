@@ -15,41 +15,21 @@
 
 Controller for the SMA EV Charger 7.4 / 22
 
-### Getting started
+### Installation
 
-Instructions on how to install this controller in ioBroker will follow
+At this stage, you can install ioBroker using the expert mode. When in expert mode, go to adapters and pick "install from URL" in the menu. In the third tab, you can paste the URL of this repo:
 
-### Publishing the adapter
+`https://github.com/drb-germany/ioBroker.smaevcharger`
 
-Using GitHub Actions, you can enable automatic releases on npm whenever you push a new git tag that matches the form
-`v<major>.<minor>.<patch>`. We **strongly recommend** that you do. The necessary steps are described in `.github/workflows/test-and-release.yml`.
+### Configuration
 
-Since you installed the release script, you can create a new
-release simply by calling:
+Configuration requires the IP and username/password of the SMA EV charger in your network. Please note that the user needs administrator rights on the charger to change values. The adapter will read values from and write values to the charger in regular intervals (see configuration).
 
-```bash
-npm run release
-```
+The parameters allowCharging, lockStation and maximumCurrent can be changed in the adapter. Any changes will be written to the charger in the write cycle. Until then, no changes will take place! This is done to protect the charger from too many changes. If the adapter receives too many changes, they will be ignored, details on this are not given by SMA. However, please not that it is well known that currents and on/off values should not be changed too frequently during the charging of the vehicle.
 
-Additional command line options for the release script are explained in the
-[release-script documentation](https://github.com/AlCalzone/release-script#command-line).
+By setting the value `forceChanges` to true, any pending changes will be written immediately. Use with care.
 
-To get your adapter released in ioBroker, please refer to the documentation
-of [ioBroker.repositories](https://github.com/ioBroker/ioBroker.repositories#requirements-for-adapter-to-get-added-to-the-latest-repository).
-
-### Test the adapter manually with dev-server
-
-Since you set up `dev-server`, you can use it to run, test and debug your adapter.
-
-You may start `dev-server` by calling from your dev directory:
-
-```bash
-dev-server watch
-```
-
-The ioBroker.admin interface will then be available at http://localhost:8081/
-
-Please refer to the [`dev-server` documentation](https://github.com/ioBroker/dev-server#command-line) for more details.
+At this stage this module is tested with the charger in "fast charge" mode. Putting it in optimized charging mode will likely ignore the values. More information will be given after testing.
 
 ## Changelog
 
@@ -66,7 +46,7 @@ Please refer to the [`dev-server` documentation](https://github.com/ioBroker/dev
 
 MIT License
 
-Copyright (c) 2023 Martin <brodeck@gmail.com>
+Copyright (c) 2023 Martin
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
