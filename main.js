@@ -67,7 +67,6 @@ class Smaevcharger extends utils.Adapter {
 			axios
 				.post(`http://${this.config.chargerip}/api/v1/measurements/live/`, [{ componentId: 'IGULD:SELF' }], {
 					headers: {
-						accept: 'application/json, text/plain, */*',
 						'content-type': 'application/json',
 						Authorization: `Bearer ${this.connectionToken}`,
 					},
@@ -216,7 +215,6 @@ class Smaevcharger extends utils.Adapter {
 					{ queryItems: [{ componentId: 'IGULD:SELF' }] },
 					{
 						headers: {
-							accept: 'application/json, text/plain, */*',
 							'content-type': 'application/json',
 							Authorization: `Bearer ${this.connectionToken}`,
 						},
@@ -327,7 +325,6 @@ class Smaevcharger extends utils.Adapter {
 					},
 					{
 						headers: {
-							Accept: 'application/json, text/plain, */*',
 							'Content-Type': 'application/json',
 							Authorization: `Bearer ${this.connectionToken}`,
 						},
@@ -371,7 +368,6 @@ class Smaevcharger extends utils.Adapter {
 					},
 					{
 						headers: {
-							accept: 'application/json, text/plain, */*',
 							'content-type': 'application/x-www-form-urlencoded;charset=UTF-8',
 						},
 					},
@@ -389,20 +385,31 @@ class Smaevcharger extends utils.Adapter {
 						this.log.error(`Error, could not get token, response code ${response.status}`);
 					}
 				})
-				.catch((error) => {
+				.catch(function (error) {
 					this.setState('info.connection', false, true);
-					this.log.error(`Could not get token from charger, error: ${error}`);
+					if (error.response) {
+						// The request was made and the server responded with a status code
+						// that falls out of the range of 2xx
+						this.log.error(`Response: ${error.response.data}`);
+						this.log.error(`Status: ${error.response.status}`);
+						this.log.error(`Headers: ${error.response.headers}`);
+					} else if (error.request) {
+						// The request was made but no response was received
+						// `error.request` is an instance of XMLHttpRequest in the browser and an instance of
+						// http.ClientRequest in node.js
+						this.log.error(`Request: ${error.request}`);
+					} else {
+						// Something happened in setting up the request that triggered an Error
+						this.log.error(`Error: ${error.message}`);
+					}
+					this.log.error(`Config: ${error.config}`);
 				});
 		}
 	}
 
 	async testConnection() {
 		await axios
-			.get(`http://${this.config.chargerip}/api/v1/system/info`, {
-				headers: {
-					accept: 'application/json, text/plain, */*',
-				},
-			})
+			.get(`http://${this.config.chargerip}/api/v1/system/info`)
 			.then((response) => {
 				if (response.status === 200) {
 					this.setState('info.chargerOnline', true, true);
