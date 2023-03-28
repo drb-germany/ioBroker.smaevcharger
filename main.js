@@ -95,6 +95,10 @@ class Smaevcharger extends utils.Adapter {
 										expire: 2 * this.config.updateRateRead,
 									});
 							}
+							if (item.channelId === 'Measurement.Operation.Health') {
+								// record this for understanding
+								this.setState('rawdata.Health', item.values[0].value, true);
+							}
 							if (item.channelId === 'Measurement.Operation.EVeh.Health') {
 								// record this for understanding
 								this.setState('rawdata.EVehHealth', item.values[0].value, true);
@@ -609,6 +613,17 @@ class Smaevcharger extends utils.Adapter {
 			native: {},
 		});
 
+		await this.setObjectNotExistsAsync('rawdata.Health', {
+			type: 'state',
+			common: {
+				name: 'Health',
+				type: 'number',
+				role: 'value',
+				read: true,
+				write: false,
+			},
+			native: {},
+		});
 		await this.setObjectNotExistsAsync('rawdata.EVehHealth', {
 			type: 'state',
 			common: {
