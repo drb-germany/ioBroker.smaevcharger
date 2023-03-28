@@ -41,7 +41,7 @@
 			"pl": "Kontroler do ładowarki SMA EV Charger 7.4 / 22",
 			"zh-cn": "SMA EV 充电器控制器 7.4 / 22"
 		},
-		"authors": ["Martin <brodeck@gmail.com>"],
+		"authors": ["Martin <ma.brodeck@gmail.com>"],
 		"keywords": ["sma", "ev", "charger", "7.4"],
 		"license": "MIT",
 		"platform": "Javascript/Node.js",
