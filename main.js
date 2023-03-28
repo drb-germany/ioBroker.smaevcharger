@@ -310,6 +310,15 @@ class Smaevcharger extends utils.Adapter {
 		// getting token is done only in the read section
 		//await this.getToken();
 
+		await this.sendValuesToCharger();
+
+		this.updateWrite = this.setTimeout(async () => {
+			this.updateWrite = null;
+			this.intervalWrite();
+		}, this.config.updateRateWrite * 1000);
+	}
+
+	async sendValuesToCharger() {
 		if (this.connectionToken && (this.setAllowCharging || this.setLockStation || this.setMaximumCurrent)) {
 			const values = [];
 			if (this.setAllowCharging) {
@@ -353,11 +362,6 @@ class Smaevcharger extends utils.Adapter {
 			this.setMaximumCurrent = false;
 			this.valueMaximumCurrent = 0;
 		}
-
-		this.updateWrite = this.setTimeout(async () => {
-			this.updateWrite = null;
-			this.intervalWrite();
-		}, this.config.updateRateWrite * 1000);
 	}
 
 	async getToken() {
@@ -696,6 +700,23 @@ class Smaevcharger extends utils.Adapter {
 		});
 		this.subscribeStates('charger.maximumCurrent');
 
+		await this.setObjectNotExistsAsync('charger.forceChanges', {
+			type: 'state',
+			common: {
+				name: 'Forces changes now',
+				type: 'boolean',
+				role: 'switch',
+				read: true,
+				write: true,
+			},
+			native: {},
+		});
+		this.setState('charger.forceChanges', {
+			val: false,
+			ack: true,
+		});
+		this.subscribeStates('charger.forceChanges');
+
 		//this.subscribeStates('charger.*');
 
 		// make sure we have a token before callin read/write, otherwise we get token twice
@@ -754,22 +775,29 @@ class Smaevcharger extends utils.Adapter {
 					this.setAllowCharging = true;
 					if (state.val) this.valueAllowCharging = true;
 					else this.valueAllowCharging = false;
-					console.debug(`allowCharging to ${this.valueAllowCharging}`);
 				} else if (id.endsWith('charger.lockStation')) {
 					this.setLockStation = true;
 					if (state.val) this.valueLockStation = true;
 					else this.valueLockStation = false;
-					console.debug(`valueLockStation to ${this.valueLockStation}`);
 				} else if (id.endsWith('charger.maximumCurrent')) {
 					this.setMaximumCurrent = true;
 					this.valueMaximumCurrent = Number(state.val);
-					console.debug(`valueMaximumCurrent to ${this.valueMaximumCurrent}`);
+				} else if (id.endsWith('charger.forceChanges')) {
+					// check if set to true, if yes, force write and set to false
+					if (state.val) {
+						// force values by writing now
+						this.sendValuesToCharger();
+						this.setState('charger.forceChanges', {
+							val: false,
+							ack: true,
+						});
+					}
 				}
 			}
-			this.log.debug(`---------------> state ${id} changed: ${state.val} (ack = ${state.ack})`);
+			//this.log.debug(`---------------> state ${id} changed: ${state.val} (ack = ${state.ack})`);
 		} else {
 			// The state was deleted
-			this.log.debug(`---------------> state ${id} deleted`);
+			//this.log.debug(`---------------> state ${id} deleted`);
 		}
 	}
 
